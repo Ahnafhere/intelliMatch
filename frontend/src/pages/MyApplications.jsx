@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
+import { getBadgeMeta } from '../utils/skillBadge';
 
 const statusColors = {
   Pending: 'badge-pending',
@@ -13,6 +14,7 @@ export default function MyApplications() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    axios.post('/api/notification/deadline-reminders').catch(() => {});
     axios.get('/api/application/my')
       .then(r => setApps(r.data))
       .catch(() => setApps([]))
@@ -31,6 +33,10 @@ export default function MyApplications() {
           <a href="/student-dashboard" className="nav-link"><span>👤</span> My Profile</a>
           <a href="/internships" className="nav-link"><span>🔍</span> Browse Internships</a>
           <a href="/my-applications" className="nav-link active"><span>📨</span> My Applications</a>
+          <a href="/student-insights" className="nav-link"><span>📈</span> Skill Trends</a>
+          <a href="/student-feedback" className="nav-link"><span>💬</span> Feedback Portal</a>
+          <a href="/interviews" className="nav-link"><span>🗓️</span> Interviews</a>
+          <a href="/notifications" className="nav-link"><span>🔔</span> Notifications</a>
         </nav>
         <hr className="divider" />
         <button className="btn-danger" onClick={() => { localStorage.removeItem('intellimatch_user'); window.location.href = '/login'; }} style={{ width: '100%' }}>Sign Out</button>
@@ -51,6 +57,7 @@ export default function MyApplications() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
             {apps.map(app => {
               const intern = app.internshipId;
+              const badgeMeta = getBadgeMeta(app.endorsementBadge);
               return (
                 <div key={app._id} className="glass-card">
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px' }}>
@@ -58,6 +65,7 @@ export default function MyApplications() {
                       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '6px' }}>
                         <h3 style={{ fontSize: '17px', fontWeight: '700' }}>{intern?.title || 'Internship'}</h3>
                         <span className={`badge ${statusColors[app.status]}`}>{app.status}</span>
+                        <span className="skill-tag" style={badgeMeta.style}>{badgeMeta.label} Badge</span>
                       </div>
                       <p style={{ color: 'var(--primary)', fontWeight: '500', fontSize: '14px', marginBottom: '8px' }}>
                         {intern?.companyName || 'Company'}
@@ -78,6 +86,9 @@ export default function MyApplications() {
                         </div>
                         <p className="metric-note" style={{ marginTop: '8px' }}>
                           Recommendation Score: {Number(app.recommendationScore || 0).toFixed(2)}%
+                        </p>
+                        <p className="metric-note" style={{ marginTop: '4px' }}>
+                          Endorsement Badge: {badgeMeta.label}
                         </p>
                         {(app.skillGapReport?.missingSkills || []).length > 0 && (
                           <div style={{ marginTop: '8px' }}>
@@ -109,19 +120,31 @@ export default function MyApplications() {
                   {/* Status progress bar */}
                   <div style={{ marginTop: '16px' }}>
                     <div style={{ display: 'flex', gap: '0', borderRadius: '8px', overflow: 'hidden', height: '6px', background: 'var(--border)' }}>
-                      {['Pending', 'Shortlisted', 'Selected'].map((step, i) => {
-                        const steps = ['Pending', 'Shortlisted', 'Selected'];
-                        const currentIdx = steps.indexOf(app.status);
-                        const isActive = app.status !== 'Rejected' && i <= currentIdx;
+                      {['Applied', 'Shortlisted', 'Interview Scheduled', 'Final Decision'].map((step, i) => {
+                        const timelineStages = (app.timeline || []).map((x) => x.stage);
+                        const isActive = timelineStages.includes(step);
                         return <div key={step} style={{ flex: 1, background: isActive ? 'linear-gradient(90deg, #6366f1, #0ea5e9)' : 'transparent', margin: '0 1px', borderRadius: '4px' }}></div>;
                       })}
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '6px' }}>
-                      {['Pending', 'Shortlisted', 'Selected'].map(step => (
-                        <span key={step} style={{ fontSize: '11px', color: app.status === step ? 'var(--primary)' : 'var(--text-muted)' }}>{step}</span>
+                      {['Applied', 'Shortlisted', 'Interview Scheduled', 'Final Decision'].map(step => (
+                        <span key={step} style={{ fontSize: '11px', color: (app.timeline || []).some((x) => x.stage === step) ? 'var(--primary)' : 'var(--text-muted)' }}>{step}</span>
                       ))}
                     </div>
                   </div>
+
+                  {(app.timeline || []).length > 0 && (
+                    <div style={{ marginTop: '12px' }}>
+                      <p className="metric-label" style={{ marginBottom: '6px' }}>Progress Timeline</p>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                        {app.timeline.slice().reverse().map((event, idx) => (
+                          <span key={`${event.stage}_${idx}`} className="metric-note">
+                            {new Date(event.changedAt).toLocaleString()} - {event.stage}{event.note ? ` (${event.note})` : ''}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               );
             })}

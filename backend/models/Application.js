@@ -22,6 +22,18 @@ const applicationSchema = new mongoose.Schema({
     enum: ['Pending', 'Shortlisted', 'Rejected', 'Selected'],
     default: 'Pending',
   },
+  timeline: [
+    {
+      stage: { type: String, required: true },
+      note: { type: String, default: '' },
+      changedAt: { type: Date, default: Date.now },
+    },
+  ],
+  interviewStatus: {
+    type: String,
+    enum: ['Not Scheduled', 'Scheduled', 'Completed', 'Selected', 'Rejected'],
+    default: 'Not Scheduled',
+  },
   appliedAt: { type: Date, default: Date.now },
 }, { timestamps: true });
 

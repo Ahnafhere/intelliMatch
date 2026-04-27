@@ -19,7 +19,7 @@ export default function LoginPage() {
       login(data);
       if (data.role === 'student') navigate('/student-dashboard');
       else if (data.role === 'company') navigate('/company-dashboard');
-      else navigate('/internships');
+      else navigate('/admin-dashboard');
     } catch (err) {
       setError(err.response?.data?.message || 'Login failed');
     } finally { setLoading(false); }

@@ -10,6 +10,14 @@ const userSchema = new mongoose.Schema({
     enum: ['student', 'company', 'university_admin', 'system_admin'],
     required: true,
   },
+  approvalStatus: {
+    type: String,
+    enum: ['pending', 'approved', 'rejected'],
+    default: 'approved',
+  },
+  moderationNote: { type: String, default: '' },
+  isFraudulent: { type: Boolean, default: false },
+  isActive: { type: Boolean, default: true },
 }, { timestamps: true });
 
 // Mongoose v7+ async pre-save: do NOT call next(), just return

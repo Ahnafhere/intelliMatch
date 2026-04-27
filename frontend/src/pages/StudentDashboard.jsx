@@ -1,8 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Routes, Route, NavLink } from 'react-router-dom';
 import axios from 'axios';
-import Sidebar from '../components/Sidebar';
 import { useAuth } from '../context/AuthContext';
+
+const badgeMeta = {
+  gold: { label: 'Gold', style: { background: 'rgba(234,179,8,0.18)', borderColor: 'rgba(234,179,8,0.45)', color: '#fde68a' } },
+  silver: { label: 'Silver', style: { background: 'rgba(148,163,184,0.2)', borderColor: 'rgba(148,163,184,0.45)', color: '#e2e8f0' } },
+  bronze: { label: 'Bronze', style: { background: 'rgba(180,83,9,0.2)', borderColor: 'rgba(180,83,9,0.45)', color: '#fdba74' } },
+};
 
 // === Skill Tag Input ===
 function SkillTagInput({ skills, onChange }) {
@@ -10,19 +14,31 @@ function SkillTagInput({ skills, onChange }) {
   const add = (e) => {
     if ((e.key === 'Enter' || e.key === ',') && input.trim()) {
       e.preventDefault();
-      if (!skills.includes(input.trim())) onChange([...skills, input.trim()]);
+      const skillName = input.trim();
+      // Check if skill already exists
+      if (!skills.find(s => (s.name || s) === skillName)) {
+        // Create skill object for consistency
+        const newSkill = typeof skills[0] === 'object' 
+          ? { name: skillName, proficiency: 'Intermediate', endorsements: 0, addedAt: new Date().toISOString() }
+          : skillName;
+        onChange([...skills, newSkill]);
+      }
       setInput('');
     }
   };
-  const remove = (s) => onChange(skills.filter(x => x !== s));
+  const remove = (idx) => onChange(skills.filter((_, i) => i !== idx));
   return (
     <div>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '8px' }}>
-        {skills.map(s => (
-          <span key={s} className="skill-tag">
-            {s} <span className="remove" onClick={() => remove(s)}>×</span>
-          </span>
-        ))}
+        {skills.map((s, i) => {
+          const skillName = typeof s === 'object' ? s.name : s;
+          const proficiency = typeof s === 'object' ? s.proficiency : 'Intermediate';
+          return (
+            <span key={i} className="skill-tag" title={proficiency}>
+              {skillName} <span className="remove" onClick={() => remove(i)}>×</span>
+            </span>
+          );
+        })}
       </div>
       <input className="form-input" placeholder="Type skill and press Enter..."
         value={input} onChange={e => setInput(e.target.value)} onKeyDown={add} />
@@ -38,24 +54,91 @@ function ProfileForm() {
   const [loading, setLoading] = useState(false);
   const [certInput, setCertInput] = useState('');
   const [projInput, setProjInput] = useState('');
+  const [githubUsername, setGithubUsername] = useState('');
+  const [importLoading, setImportLoading] = useState(false);
 
   useEffect(() => {
-    axios.get('/api/student/profile/me').then(r => setForm(f => ({ ...f, ...r.data }))).catch(() => {});
+    axios.get('/api/student/profile/me')
+      .then(r => {
+        // Ensure skills are in object format
+        const skillsData = (r.data.skills || []).map(s => 
+          typeof s === 'object' ? s : { name: s, proficiency: 'Intermediate', endorsements: 0, addedAt: new Date().toISOString() }
+        );
+        setForm(f => ({ ...f, ...r.data, skills: skillsData }));
+      })
+      .catch(() => {});
   }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true); setMsg('');
+    setLoading(true); 
+    setMsg('');
     try {
-      await axios.put('/api/student/profile', {
+      const submitData = {
         ...form,
-        certifications: certInput ? [...form.certifications, certInput] : form.certifications,
-        projects: projInput ? [...form.projects, projInput] : form.projects,
-      });
+        certifications: certInput ? [...(form.certifications || []), certInput] : form.certifications,
+        projects: projInput ? [...(form.projects || []), projInput] : form.projects,
+        // Ensure skills are in the right format (objects with name, proficiency, etc)
+        skills: (form.skills || []).map(s => 
+          typeof s === 'object' ? s : { name: s, proficiency: 'Intermediate', endorsements: 0, addedAt: new Date().toISOString() }
+        )
+      };
+      
+      await axios.put('/api/student/profile', submitData);
       setMsg('✅ Profile saved successfully!');
+      // Clear temporary inputs
+      setCertInput('');
+      setProjInput('');
     } catch (err) {
       setMsg('❌ ' + (err.response?.data?.message || 'Error saving'));
-    } finally { setLoading(false); }
+    } finally { 
+      setLoading(false); 
+    }
+  };
+
+  const importGitHubSkills = async () => {
+    if (!githubUsername.trim()) {
+      setMsg('❌ Please enter a GitHub username');
+      return;
+    }
+    
+    setImportLoading(true);
+    setMsg('');
+    try {
+      const response = await axios.post(`/api/student/github-skills/${githubUsername}`, {});
+      
+      // Safely get the skill objects from the response
+      if (!response.data || !response.data.profile) {
+        setMsg('❌ Invalid response from server');
+        setImportLoading(false);
+        return;
+      }
+      
+      const allProfileSkills = response.data.profile.skills || [];
+      const importedCount = response.data.importedCount || 0;
+      const fetchedSkills = response.data.fetchedSkills || [];
+      
+      // Update form with all skills from profile
+      setForm(f => ({
+        ...f,
+        skills: allProfileSkills
+      }));
+      
+      // Show what was fetched from GitHub
+      const fetchedNames = fetchedSkills.map(s => (typeof s === 'object' ? s.name : s)).join(', ');
+      
+      if (importedCount > 0) {
+        setMsg(`✅ Successfully imported from GitHub! ${importedCount} new skills added. Fetched: ${fetchedNames}`);
+      } else {
+        setMsg(`ℹ️ All skills from GitHub were already in your profile. Fetched: ${fetchedNames}`);
+      }
+      setGithubUsername('');
+    } catch (err) {
+      const errorMsg = err.response?.data?.error || err.response?.data?.message || err.message || 'Failed to import from GitHub';
+      setMsg('❌ ' + errorMsg);
+    } finally {
+      setImportLoading(false);
+    }
   };
 
   const addList = (field, val, setVal) => {
@@ -88,6 +171,30 @@ function ProfileForm() {
           <label className="form-label">Technical Skills <span style={{ color: 'var(--text-muted)' }}>(press Enter/comma to add)</span></label>
           <SkillTagInput skills={form.skills || []} onChange={s => setForm({ ...form, skills: s })} />
         </div>
+        <div style={{ background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.2)', borderRadius: '10px', padding: '16px' }}>
+          <label className="form-label" style={{ marginBottom: '12px' }}>📱 Import Skills from GitHub</label>
+          <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '12px' }}>Automatically extract your programming skills and technologies from your public GitHub profile.</p>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <input 
+              className="form-input" 
+              placeholder="Enter GitHub username (e.g. torvalds)" 
+              value={githubUsername} 
+              onChange={e => setGithubUsername(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && importGitHubSkills()}
+              disabled={importLoading}
+              style={{ flex: 1 }}
+            />
+            <button 
+              type="button" 
+              className="btn-primary" 
+              onClick={importGitHubSkills}
+              disabled={importLoading || !githubUsername.trim()}
+              style={{ whiteSpace: 'nowrap' }}
+            >
+              {importLoading ? '🔄 Importing...' : '📂 Import'}
+            </button>
+          </div>
+        </div>
         <div>
           <label className="form-label">Certifications</label>
           <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
@@ -113,6 +220,24 @@ function ProfileForm() {
               </span>
             ))}
           </div>
+        </div>
+        <div>
+          <label className="form-label">Verified Skill Badges</label>
+          {(form.verifiedSkills || []).length === 0 ? (
+            <p className="metric-note">No verified badges yet. Company or university admin verification will appear here.</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {(form.verifiedSkills || []).map((entry, idx) => {
+                const badge = badgeMeta[entry.badgeLevel || 'bronze'] || badgeMeta.bronze;
+                return (
+                  <div key={`${entry.skill}_${idx}`} style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                    <span className="skill-tag" style={{ background: 'rgba(34,197,94,0.14)', borderColor: 'rgba(34,197,94,0.45)', color: '#86efac' }}>{entry.skill}</span>
+                    <span className="skill-tag" style={badge.style}>{badge.label} Badge</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
           <button className="btn-primary" type="submit" disabled={loading}>{loading ? 'Saving...' : 'Save Profile'}</button>
@@ -226,10 +351,6 @@ function CVUploadSection() {
 // === Student Dashboard ===
 export default function StudentDashboard() {
   const [view, setView] = useState('profile');
-  const sidebarLinks = [
-    { to: '#profile', label: 'My Profile', icon: 'profile' },
-    { to: '#cv', label: 'CV Upload', icon: 'cv' },
-  ];
 
   return (
     <div className="main-layout">
@@ -243,8 +364,12 @@ export default function StudentDashboard() {
           {[
             { key: 'profile', label: 'My Profile', icon: '👤' },
             { key: 'cv', label: 'CV Upload', icon: '📄' },
+            { key: 'insights', label: 'Skill Trends', icon: '📈', external: '/student-insights' },
             { key: 'search', label: 'Browse Internships', icon: '🔍', external: '/internships' },
             { key: 'apps', label: 'My Applications', icon: '📨', external: '/my-applications' },
+            { key: 'feedback', label: 'Feedback Portal', icon: '💬', external: '/student-feedback' },
+            { key: 'interviews', label: 'Interviews', icon: '🗓️', external: '/interviews' },
+            { key: 'notifications', label: 'Notifications', icon: '🔔', external: '/notifications' },
           ].map(link => (
             <a key={link.key} href={link.external || '#'} onClick={link.external ? undefined : (e) => { e.preventDefault(); setView(link.key); }}
               className={`nav-link${view === link.key ? ' active' : ''}`}>

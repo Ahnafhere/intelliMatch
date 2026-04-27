@@ -3,13 +3,29 @@ import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 
 export default function InternshipSearch() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const [internships, setInternships] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({ company: '', skill: '', department: '', deadline: '' });
   const [applying, setApplying] = useState({});
   const [applied, setApplied] = useState({});
   const [msg, setMsg] = useState({});
+
+  const sidebarLinks = user?.role === 'student'
+    ? [
+        { href: '/student-dashboard', label: 'My Profile', icon: '👤' },
+        { href: '/internships', label: 'Browse Internships', icon: '🔍', active: true },
+        { href: '/my-applications', label: 'My Applications', icon: '📨' },
+        { href: '/student-insights', label: 'Skill Trends', icon: '📈' },
+        { href: '/interviews', label: 'Interviews', icon: '🗓️' },
+        { href: '/notifications', label: 'Notifications', icon: '🔔' },
+      ]
+    : [
+        { href: '/admin-dashboard', label: 'Admin Dashboard', icon: '🛡️' },
+        { href: '/internships', label: 'Internship Board', icon: '📌', active: true },
+        { href: '/interviews', label: 'Interviews', icon: '🗓️' },
+        { href: '/notifications', label: 'Notifications', icon: '🔔' },
+      ];
 
   const fetchInternships = async () => {
     setLoading(true);
@@ -45,12 +61,14 @@ export default function InternshipSearch() {
         </div>
         <hr className="divider" />
         <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-          <a href="/student-dashboard" className="nav-link"><span>👤</span> My Profile</a>
-          <a href="/internships" className="nav-link active"><span>🔍</span> Browse Internships</a>
-          <a href="/my-applications" className="nav-link"><span>📨</span> My Applications</a>
+          {sidebarLinks.map((link) => (
+            <a key={link.href} href={link.href} className={`nav-link${link.active ? ' active' : ''}`}>
+              <span>{link.icon}</span> {link.label}
+            </a>
+          ))}
         </nav>
         <hr className="divider" />
-        <button className="btn-danger" onClick={() => { localStorage.removeItem('intellimatch_user'); window.location.href = '/login'; }} style={{ width: '100%' }}>Sign Out</button>
+        <button className="btn-danger" onClick={logout} style={{ width: '100%' }}>Sign Out</button>
       </aside>
       <main className="content-area">
         <h1 className="page-title">Browse Internships</h1>

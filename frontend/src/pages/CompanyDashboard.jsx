@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { getBadgeMeta } from '../utils/skillBadge';
 
 function SkillWeightRow({ skill, weight, onChange, onRemove }) {
   return (
@@ -256,40 +257,45 @@ function CandidatesPanel({ internship, candidates, loading, onReload }) {
           No candidates applied to this internship yet.
         </div>
       ) : (
-        candidates.map((app) => (
-          <div key={app._id} className="glass-card ranking-card">
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px', flexWrap: 'wrap' }}>
-                  <span className="rank-pill">#{app.rank}</span>
-                  <h3 style={{ fontSize: '17px' }}>{app.studentId?.name || 'Student'}</h3>
-                  <span className="badge badge-shortlisted">Smart {app.recommendationScore}%</span>
-                </div>
-                <p style={{ color: 'var(--text-muted)', fontSize: '13px', marginBottom: '10px' }}>
-                  {app.studentId?.email || 'N/A'} | Match {app.matchScore}% | CGPA {Number(app.cgpaAtApply || 0).toFixed(2)}
-                </p>
-                <div className="metric-note" style={{ marginBottom: '8px' }}>
-                  Missing skills: {(app.skillGapReport?.missingSkills || []).map((x) => x.skill).join(', ') || 'None'}
-                </div>
-                {(app.skillGapReport?.missingSkills || []).slice(0, 2).map((missing) => (
-                  <div key={missing.skill} className="metric-note" style={{ marginTop: '6px' }}>
-                    Learn {missing.skill}: {(missing.recommendedLearningPaths || []).join(' | ')}
+        candidates.map((app) => {
+          const badgeMeta = getBadgeMeta(app.endorsementBadge);
+
+          return (
+            <div key={app._id} className="glass-card ranking-card">
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px', flexWrap: 'wrap' }}>
+                    <span className="rank-pill">#{app.rank}</span>
+                    <h3 style={{ fontSize: '17px' }}>{app.studentId?.name || 'Student'}</h3>
+                    <span className="badge badge-shortlisted">Smart {app.recommendationScore}%</span>
+                    <span className="skill-tag" style={badgeMeta.style}>{badgeMeta.label} Badge</span>
                   </div>
-                ))}
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', minWidth: '190px' }}>
-                <label className="form-label">Application Status</label>
-                <select className="form-input" value={app.status} onChange={(e) => updateStatus(app._id, e.target.value)}>
-                  {statusOptions.map((status) => (
-                    <option key={status} value={status}>
-                      {status}
-                    </option>
+                  <p style={{ color: 'var(--text-muted)', fontSize: '13px', marginBottom: '10px' }}>
+                    {app.studentId?.email || 'N/A'} | Match {app.matchScore}% | CGPA {Number(app.cgpaAtApply || 0).toFixed(2)}
+                  </p>
+                  <div className="metric-note" style={{ marginBottom: '8px' }}>
+                    Missing skills: {(app.skillGapReport?.missingSkills || []).map((x) => x.skill).join(', ') || 'None'}
+                  </div>
+                  {(app.skillGapReport?.missingSkills || []).slice(0, 2).map((missing) => (
+                    <div key={missing.skill} className="metric-note" style={{ marginTop: '6px' }}>
+                      Learn {missing.skill}: {(missing.recommendedLearningPaths || []).join(' | ')}
+                    </div>
                   ))}
-                </select>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', minWidth: '190px' }}>
+                  <label className="form-label">Application Status</label>
+                  <select className="form-input" value={app.status} onChange={(e) => updateStatus(app._id, e.target.value)}>
+                    {statusOptions.map((status) => (
+                      <option key={status} value={status}>
+                        {status}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
             </div>
-          </div>
-        ))
+          );
+        })
       )}
     </div>
   );
@@ -434,11 +440,14 @@ export default function CompanyDashboard() {
             { key: 'post', label: 'New Posting', icon: 'Post' },
             { key: 'templates', label: 'Templates', icon: 'Tpl' },
             { key: 'candidates', label: 'Candidates', icon: 'Rank' },
+            { key: 'insights', label: 'Analytics', icon: 'Data', external: '/company-insights' },
+            { key: 'interviews', label: 'Interviews', icon: 'Slot', external: '/interviews' },
+            { key: 'notifications', label: 'Notifications', icon: 'Bell', external: '/notifications' },
           ].map((link) => (
             <a
               key={link.key}
-              href="#"
-              onClick={(e) => {
+              href={link.external || '#'}
+              onClick={link.external ? undefined : (e) => {
                 e.preventDefault();
                 setView(link.key);
                 if (link.key !== 'post') setPostPrefill(null);

@@ -2,6 +2,7 @@ const Internship = require('../models/Internship');
 const InternshipTemplate = require('../models/InternshipTemplate');
 const StudentProfile = require('../models/StudentProfile');
 const { calculateMatchInsights } = require('../utils/matchingEngine');
+const { getRecommendationWeights } = require('../utils/settingsService');
 
 // POST /api/internship
 const createInternship = async (req, res) => {
@@ -212,15 +213,19 @@ const searchInternships = async (req, res) => {
 
     const profile = await StudentProfile.findOne({ userId: req.user._id }).lean();
     const studentSkills = profile?.skills || [];
+    const verifiedSkills = profile?.verifiedSkills || [];
     const studentCgpa = profile?.cgpa || 0;
+    const weights = await getRecommendationWeights();
 
     const withInsights = results
       .map((internship) => {
         const insights = calculateMatchInsights({
           requiredSkills: internship.requiredSkills,
           studentSkills,
+          verifiedSkills,
           cgpa: studentCgpa,
           minCGPA: internship.minCGPA,
+          weights,
         });
 
         return {

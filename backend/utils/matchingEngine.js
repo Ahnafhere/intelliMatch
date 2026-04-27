@@ -16,6 +16,8 @@ const LEARNING_PATHS = {
   teamwork: ['Teamwork Skills: Communicating Effectively in Groups', 'Agile with Atlassian Jira'],
 };
 
+const { getBadgeWeight } = require('./skillBadgeService');
+
 const normalize = (value) =>
   (value || '')
     .toString()
@@ -51,8 +53,31 @@ const recommendationForSkill = (skill) => {
   ];
 };
 
-const calculateMatchInsights = ({ requiredSkills = [], studentSkills = [], cgpa = 0, minCGPA = 0 }) => {
+const calculateMatchInsights = ({
+  requiredSkills = [],
+  studentSkills = [],
+  verifiedSkills = [],
+  cgpa = 0,
+  minCGPA = 0,
+  weights = { skillWeight: 0.75, cgpaWeight: 0.25 },
+}) => {
   const normalizedStudentSkillSet = new Set(uniqueSkills(studentSkills).map(normalize));
+
+  // Supports legacy array format: ['React', 'Node'] and rich format: [{ skill: 'React', badgeLevel: 'gold' }]
+  const normalizedVerifiedSkillMap = new Map();
+  (verifiedSkills || []).forEach((entry) => {
+    if (!entry) return;
+
+    const skillName = typeof entry === 'string' ? entry : entry.skill;
+    const normalizedSkill = normalize(skillName);
+    if (!normalizedSkill) return;
+
+    const weight = typeof entry === 'string' ? getBadgeWeight('bronze') : getBadgeWeight(entry.badgeLevel);
+    const existingWeight = normalizedVerifiedSkillMap.get(normalizedSkill) || 0;
+    if (weight > existingWeight) {
+      normalizedVerifiedSkillMap.set(normalizedSkill, weight);
+    }
+  });
 
   const normalizedRequired = (requiredSkills || [])
     .filter((entry) => entry && entry.skill)
@@ -88,8 +113,29 @@ const calculateMatchInsights = ({ requiredSkills = [], studentSkills = [], cgpa 
   const minCgpaNum = Number(minCGPA) || 0;
   const cgpaScore = minCgpaNum <= 0 ? 100 : Math.max(0, Math.min(100, (cgpaNum / minCgpaNum) * 100));
 
+  const verifiedMatchedCount = matchedSkills.filter((item) =>
+    normalizedVerifiedSkillMap.has(normalize(item.skill))
+  ).length;
+
+  const verifiedBonus = Math.min(
+    8,
+    matchedSkills.reduce((sum, item) => {
+      const badgeWeight = normalizedVerifiedSkillMap.get(normalize(item.skill));
+      if (!badgeWeight) return sum;
+      return sum + badgeWeight;
+    }, 0)
+  );
+
+  const skillWeight = Number(weights?.skillWeight);
+  const cgpaWeight = Number(weights?.cgpaWeight);
+  const totalWeight = skillWeight + cgpaWeight;
+  const normalizedSkillWeight = totalWeight > 0 ? skillWeight / totalWeight : 0.75;
+  const normalizedCgpaWeight = totalWeight > 0 ? cgpaWeight / totalWeight : 0.25;
+
   // Balanced recommendation: skill fit is primary signal, CGPA is secondary tie-breaker.
-  const recommendationScore = Number((matchScore * 0.75 + cgpaScore * 0.25).toFixed(2));
+  const recommendationScore = Number(
+    Math.min(100, matchScore * normalizedSkillWeight + cgpaScore * normalizedCgpaWeight + verifiedBonus).toFixed(2)
+  );
 
   return {
     matchScore,
@@ -100,6 +146,8 @@ const calculateMatchInsights = ({ requiredSkills = [], studentSkills = [], cgpa 
       totalRequiredWeight,
       matchedWeight,
       completionRatio: totalRequiredWeight ? Number((matchedWeight / totalRequiredWeight).toFixed(4)) : 0,
+      verifiedMatchedCount,
+      verifiedCredibilityBonus: Number(verifiedBonus.toFixed(2)),
     },
   };
 };
