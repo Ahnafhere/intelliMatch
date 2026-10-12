@@ -1,12 +1,16 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { useAuth, homePathFor } from '../context/AuthContext';
+import GoogleSignInButton from '../components/GoogleSignInButton';
 
 export default function RegisterPage() {
   const [form, setForm] = useState({ name: '', email: '', password: '', role: 'student' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const { login } = useAuth();
+  const [info, setInfo] = useState('');
 
   const roleLabels = {
     student: 'Student',
@@ -27,12 +31,18 @@ export default function RegisterPage() {
     } finally { setLoading(false); }
   };
 
+  const handleGoogle = (data) => {
+    if (!data.token) return setInfo(data.message || 'Your account is awaiting admin approval.');
+    login(data);
+    navigate(homePathFor(data.role));
+  };
+
   return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px',
       background: 'radial-gradient(ellipse at top right, rgba(14,165,233,0.12) 0%, transparent 60%), var(--bg-dark)' }}>
       <div className="glass-card" style={{ width: '100%', maxWidth: '440px' }}>
         <div style={{ textAlign: 'center', marginBottom: '28px' }}>
-          <h1 className="gradient-text" style={{ fontSize: '28px', fontWeight: '800' }}>Create Account</h1>
+          <Link to="/"><h1 className="gradient-text" style={{ fontSize: '28px', fontWeight: '800' }}>Create Account</h1></Link>
           <p style={{ color: 'var(--text-muted)', marginTop: '6px', fontSize: '14px' }}>Join IntelliMatch today</p>
         </div>
         {error && (
@@ -41,6 +51,26 @@ export default function RegisterPage() {
             {error}
           </div>
         )}
+        {info && (
+          <div style={{ background: 'rgba(14,165,233,0.1)', border: '1px solid rgba(14,165,233,0.3)', color: '#7dd3fc',
+            padding: '10px 14px', borderRadius: '10px', marginBottom: '16px', fontSize: '14px' }}>
+            {info}
+          </div>
+        )}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '12px' }}>
+          {[['student', '🎓 Student'], ['company', '🏢 Company']].map(([val, label]) => (
+            <button key={val} type="button" onClick={() => setForm({ ...form, role: val })}
+              className={form.role === val ? 'btn-primary' : 'btn-secondary'} style={{ padding: '9px' }}>
+              {label}
+            </button>
+          ))}
+        </div>
+        <GoogleSignInButton role={form.role} onSuccess={handleGoogle} onError={setError} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', margin: '18px 0', color: 'var(--text-muted)', fontSize: '12px' }}>
+          <div style={{ flex: 1, height: '1px', background: 'var(--border)' }} />
+          or register with email
+          <div style={{ flex: 1, height: '1px', background: 'var(--border)' }} />
+        </div>
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div>
             <label className="form-label">Full Name</label>

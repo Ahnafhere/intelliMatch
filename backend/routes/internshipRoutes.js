@@ -2,13 +2,14 @@ const express = require('express');
 const router = express.Router();
 const {
   createInternship, updateInternship, getAllInternships,
-  deleteInternship, searchInternships, getMyInternships,
+  deleteInternship, searchInternships, getPublicInternships, getMyInternships,
   createTemplate, getMyTemplates, saveInternshipAsTemplate,
   createPostFromTemplate, duplicateInternship
 } = require('../controllers/internshipController');
 const { protect, authorizeRoles } = require('../middleware/auth');
 
 // Note: /search must be before /:id to avoid route conflict
+router.get('/public', getPublicInternships);
 router.get('/search', protect, searchInternships);
 router.get('/template/company', protect, authorizeRoles('company'), getMyTemplates);
 router.post('/template', protect, authorizeRoles('company'), createTemplate);

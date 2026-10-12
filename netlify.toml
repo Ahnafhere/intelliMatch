@@ -1,0 +1,37 @@
+[build]
+  base = "."
+  command = "npm ci --prefix backend --omit=dev && npm ci --prefix frontend && npm run build --prefix frontend"
+  publish = "frontend/dist"
+  functions = "backend/functions"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+[functions]
+  node_bundler = "esbuild"
+  external_node_modules = ["mongoose", "mongodb", "@affinda/affinda", "nodemailer"]
+
+# API -> Express app running as a Netlify Function (same domain, no CORS)
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/api/:splat"
+  status = 200
+  force = true
+
+# React Router single-page app fallback
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Hashed build assets can be cached forever
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"

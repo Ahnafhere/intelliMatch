@@ -4,7 +4,7 @@ import axios from 'axios';
 const AuthContext = createContext();
 
 // Configure axios with baseURL
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+const API_BASE_URL = import.meta.env.VITE_API_URL || '';
 axios.defaults.baseURL = API_BASE_URL;
 
 export const AuthProvider = ({ children }) => {
@@ -39,3 +39,10 @@ export const AuthProvider = ({ children }) => {
 };
 
 export const useAuth = () => useContext(AuthContext);
+
+// Where each role lands after signing in
+export const homePathFor = (role) => {
+  if (role === 'student') return '/student-dashboard';
+  if (role === 'company') return '/company-dashboard';
+  return '/admin-dashboard';
+};

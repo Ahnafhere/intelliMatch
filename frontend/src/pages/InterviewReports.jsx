@@ -32,7 +32,7 @@ export default function InterviewReports() {
       const headers = { Authorization: `Bearer ${token}` };
       const params = `startDate=${dateRange.startDate}&endDate=${dateRange.endDate}`;
 
-      const reportRes = await axios.get(`http://localhost:5000/api/interview/report/summary?${params}`, { headers });
+      const reportRes = await axios.get(`/api/interview/report/summary?${params}`, { headers });
       
       // Extract data from report
       const reportData = reportRes.data;
@@ -62,7 +62,7 @@ export default function InterviewReports() {
 
     try {
       const headers = { Authorization: `Bearer ${token}` };
-      const res = await axios.get(`http://localhost:5000/api/interview/report/recent-updates?minutesAgo=120`, { headers });
+      const res = await axios.get(`/api/interview/report/recent-updates?minutesAgo=120`, { headers });
       // API returns array directly, not {updates: []}
       setRecentUpdates(Array.isArray(res.data) ? res.data : res.data.updates || []);
     } catch (err) {
@@ -89,7 +89,7 @@ export default function InterviewReports() {
     try {
       const headers = { Authorization: `Bearer ${token}` };
       const params = `startDate=${dateRange.startDate}&endDate=${dateRange.endDate}`;
-      const res = await axios.get(`http://localhost:5000/api/interview/download/history?${params}`, { headers });
+      const res = await axios.get(`/api/interview/download/history?${params}`, { headers });
       
       const blob = new Blob([res.data], { type: 'text/html' });
       const url = window.URL.createObjectURL(blob);

@@ -122,7 +122,7 @@ export default function InternshipSearch() {
                     <p style={{ color: 'var(--primary)', fontSize: '14px', fontWeight: '500', marginBottom: '8px' }}>
                       {p.companyName || 'Unknown Company'}
                     </p>
-                    {p.description && <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '10px', lineHeight: '1.5' }}>{p.description}</p>}
+                    {p.description && <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '10px', lineHeight: '1.5', whiteSpace: 'pre-line' }}>{p.description}</p>}
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', fontSize: '13px', color: 'var(--text-muted)', marginBottom: '12px' }}>
                       {p.department && <span>📁 {p.department}</span>}
                       {p.deadline && <span>📅 Deadline: {new Date(p.deadline).toLocaleDateString()}</span>}

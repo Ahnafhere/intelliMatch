@@ -24,7 +24,7 @@ export default function InterviewTimeline() {
         setError('');
         const headers = { Authorization: `Bearer ${token}` };
         const res = await axios.get(
-          `http://localhost:5000/api/interview/timeline/${applicationId}`,
+          `/api/interview/timeline/${applicationId}`,
           { headers }
         );
         setTimeline(res.data);
@@ -49,7 +49,7 @@ export default function InterviewTimeline() {
     try {
       const headers = { Authorization: `Bearer ${token}` };
       const res = await axios.get(
-        `http://localhost:5000/api/interview/download/timeline/${applicationId}`,
+        `/api/interview/download/timeline/${applicationId}`,
         { headers }
       );
       

@@ -1,21 +1,30 @@
+import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider, useAuth } from './context/AuthContext';
+import { AuthProvider, useAuth, homePathFor } from './context/AuthContext';
 import './index.css';
+import LandingPage from './pages/LandingPage';
 
-import LoginPage from './pages/LoginPage';
-import RegisterPage from './pages/RegisterPage';
-import StudentDashboard from './pages/StudentDashboard';
-import CompanyDashboard from './pages/CompanyDashboard';
-import InternshipSearch from './pages/InternshipSearch';
-import MyApplications from './pages/MyApplications';
-import AdminDashboard from './pages/AdminDashboard';
-import NotificationsPage from './pages/NotificationsPage';
-import InterviewCenter from './pages/InterviewCenter';
-import StudentInsights from './pages/StudentInsights';
-import CompanyInsights from './pages/CompanyInsights';
-import InterviewReports from './pages/InterviewReports';
-import InterviewTimeline from './pages/InterviewTimeline';
-import StudentFeedbackPortal from './pages/StudentFeedbackPortal';
+const LoginPage = lazy(() => import('./pages/LoginPage'));
+const RegisterPage = lazy(() => import('./pages/RegisterPage'));
+const StudentDashboard = lazy(() => import('./pages/StudentDashboard'));
+const CompanyDashboard = lazy(() => import('./pages/CompanyDashboard'));
+const InternshipSearch = lazy(() => import('./pages/InternshipSearch'));
+const MyApplications = lazy(() => import('./pages/MyApplications'));
+const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
+const NotificationsPage = lazy(() => import('./pages/NotificationsPage'));
+const InterviewCenter = lazy(() => import('./pages/InterviewCenter'));
+const StudentInsights = lazy(() => import('./pages/StudentInsights'));
+const CompanyInsights = lazy(() => import('./pages/CompanyInsights'));
+const InterviewReports = lazy(() => import('./pages/InterviewReports'));
+const InterviewTimeline = lazy(() => import('./pages/InterviewTimeline'));
+const StudentFeedbackPortal = lazy(() => import('./pages/StudentFeedbackPortal'));
+
+const PageLoader = () => (
+  <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+    <div style={{ width: 40, height: 40, border: '4px solid #e5e7eb', borderTopColor: '#6366f1', borderRadius: '50%', animation: 'im-spin 0.8s linear infinite' }} />
+    <style>{'@keyframes im-spin { to { transform: rotate(360deg); } }'}</style>
+  </div>
+);
 
 const PrivateRoute = ({ element, roles }) => {
   const { user } = useAuth();
@@ -26,19 +35,19 @@ const PrivateRoute = ({ element, roles }) => {
 
 const HomeRedirect = () => {
   const { user } = useAuth();
-  if (!user) return <Navigate to="/login" />;
-  if (user.role === 'student') return <Navigate to="/student-dashboard" />;
-  if (user.role === 'company') return <Navigate to="/company-dashboard" />;
-  return <Navigate to="/admin-dashboard" />;
+  if (!user) return <LandingPage />;
+  return <Navigate to={homePathFor(user.role)} replace />;
 };
 
 function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
+        <Suspense fallback={<PageLoader />}>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
           <Route path="/" element={<HomeRedirect />} />
           <Route path="/student-dashboard" element={
             <PrivateRoute element={<StudentDashboard />} roles={['student']} />
@@ -77,6 +86,7 @@ function App() {
             <PrivateRoute element={<InterviewTimeline />} roles={['student','company','university_admin','system_admin']} />
           } />
         </Routes>
+        </Suspense>
       </BrowserRouter>
     </AuthProvider>
   );

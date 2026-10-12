@@ -18,6 +18,9 @@ const userSchema = new mongoose.Schema({
   moderationNote: { type: String, default: '' },
   isFraudulent: { type: Boolean, default: false },
   isActive: { type: Boolean, default: true },
+  authProvider: { type: String, enum: ['local', 'google'], default: 'local' },
+  googleId: { type: String },
+  avatar: { type: String },
 }, { timestamps: true });
 
 // Mongoose v7+ async pre-save: do NOT call next(), just return

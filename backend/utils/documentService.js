@@ -551,7 +551,7 @@ const generateApplicationInterviewDocument = async (applicationId) => {
  */
 const saveDocumentToFile = (content, filename) => {
   try {
-    const docsDir = path.join(__dirname, '../uploads/documents');
+    const docsDir = path.join(require('./upload').uploadDir, 'documents');
     
     if (!fs.existsSync(docsDir)) {
       fs.mkdirSync(docsDir, { recursive: true });

@@ -1,6 +1,7 @@
 const Internship = require('../models/Internship');
 const InternshipTemplate = require('../models/InternshipTemplate');
 const StudentProfile = require('../models/StudentProfile');
+const User = require('../models/User');
 const { calculateMatchInsights } = require('../utils/matchingEngine');
 const { getRecommendationWeights } = require('../utils/settingsService');
 
@@ -176,6 +177,28 @@ const getAllInternships = async (req, res) => {
   }
 };
 
+// GET /api/internship/public — open listing for the landing page (no login needed)
+const getPublicInternships = async (req, res) => {
+  try {
+    const [internships, total, companies, students] = await Promise.all([
+      Internship.find()
+        .select('title companyName description deadline minCGPA department requiredSkills createdAt')
+        .sort({ createdAt: -1 })
+        .limit(60)
+        .lean(),
+      Internship.estimatedDocumentCount(),
+      User.countDocuments({ role: 'company' }),
+      User.countDocuments({ role: 'student' }),
+    ]);
+    // Cache at Netlify's CDN edge so the homepage loads instantly
+    res.set('Cache-Control', 'public, max-age=60');
+    res.set('Netlify-CDN-Cache-Control', 'public, s-maxage=120, stale-while-revalidate=600');
+    res.json({ internships, stats: { internships: total, companies, students } });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
 // DELETE /api/internship/:id
 const deleteInternship = async (req, res) => {
   try {
@@ -255,6 +278,7 @@ module.exports = {
   createInternship,
   updateInternship,
   getAllInternships,
+  getPublicInternships,
   deleteInternship,
   searchInternships,
   getMyInternships,

@@ -1,6 +1,7 @@
 const StudentProfile = require('../models/StudentProfile');
 const path = require('path');
 const fs = require('fs');
+const { isServerless } = require('../utils/upload');
 
 // POST /api/student/upload-cv
 const uploadCV = async (req, res) => {
@@ -38,7 +39,6 @@ const uploadCV = async (req, res) => {
     // Optional: Datamuse API for related skill suggestions (public API)
     let relatedSkills = [];
     try {
-      const fetch = (...args) => import('node-fetch').then(({ default: f }) => f(...args));
       const searchSkill = extractedSkills.length > 0 ? extractedSkills[0] : 'technology';
       const response = await fetch(`https://api.datamuse.com/words?ml=${searchSkill}&max=5`);
       const data = await response.json();
@@ -53,6 +53,9 @@ const uploadCV = async (req, res) => {
       { cvUrl },
       { upsert: true, new: true }
     );
+
+    // Temp storage on serverless is ephemeral; clean up once parsed
+    if (isServerless) fs.unlink(uploadedPath, () => {});
 
     res.json({
       message: 'CV uploaded and parsed successfully',
